@@ -680,6 +680,29 @@ def get_raw_forecast_date(request):
 
 
 
+# Retrieve xlsx data
+@controller(name='get_observed_data_xlsx',url='national-water-level-forecast-brazil/get-observed-data-xlsx')
+def get_observed_data_xlsx(request):
+    # Retrieving GET arguments
+    station_code = request.GET['codigo'] #"h0267"
+    station_comid = request.GET['comid'] #9027406
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+    # Data series
+    observed_data = get_format_data("select distinct * from wl_{0} order by datetime;".format(station_code), conn)
+    observed_data = observed_data.rename(columns={"streamflow_m^3/s": "Historical simulation (m3/s)"})
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    observed_data.to_excel(writer, sheet_name='observed_time_serie', index=True)  # Aquí se incluye el índice
+    writer.save()
+    output.seek(0)
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=observed_data.xlsx'
+    response.write(output.getvalue())
+    return response
 
 
 # Retrieve xlsx data for historical simulation
